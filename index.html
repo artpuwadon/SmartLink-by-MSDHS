@@ -7,9 +7,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background-color: #f8fafc; color: #1e293b; }
-        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; }
+        .header-container { border-bottom: 3px solid #3b82f6; padding-bottom: 15px; margin-bottom: 25px; }
         h1 { margin: 0; color: #1e3a8a; font-size: 28px; }
-        .btn-add { background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; }
+        
+        /* สไตล์หน้าฟอร์ม Webapp ใหม่ */
+        .form-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #e2e8f0; }
+        .form-group { display: flex; gap: 12px; margin-top: 10px; }
+        input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; transition: 0.2s; }
+        input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .btn-submit { background-color: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s; }
+        .btn-submit:hover { background-color: #1d4ed8; }
+        .btn-submit:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+        #statusMsg { font-size: 14px; font-weight: bold; display: block; margin-top: 8px; }
+
+        /* สไตล์ตารางแสดงผลเดิม */
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         th, td { padding: 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         th { background-color: #f1f5f9; color: #475569; }
@@ -21,11 +32,18 @@
 <body>
 
     <div class="header-container">
-        <div>
-            <h1>🔗 ระบบลิงก์สั้น & QR Code (Link.m-society)</h1>
-            <p style="margin: 5px 0 0 0; color: #64748b;">บริการลิงก์สั้นภายในหน่วยงานของเรา</p>
+        <h1>🔗 ระบบลิงก์สั้น & QR Code (Link.m-society)</h1>
+        <p style="margin: 5px 0 0 0; color: #64748b;">บริการสร้างและจัดการลิงก์สั้นภายในหน่วยงาน</p>
+    </div>
+
+    <div class="form-container">
+        <h3 style="margin: 0; color: #1e3a8a;">➕ สร้างลิงก์สั้นใหม่</h3>
+        <div class="form-group">
+            <input type="text" id="inputShort" placeholder="ชื่อลิงก์สั้น เช่น msdhs" style="flex: 2;">
+            <input type="url" id="inputLong" placeholder="วางลิงก์ยาวปลายทาง (https://...)" style="flex: 5;">
+            <button id="btnSubmit" onclick="submitToData()" class="btn-submit">บันทึกข้อมูล</button>
         </div>
-        <a href="https://docs.google.com/forms/d/e/1FAIpQLScsIZKFTDjTJg6wp9cbPF9YW-nHwv5wEKXmmhoA2JK0Dvwldw/viewform" target="_blank" class="btn-add">+ เพิ่มลิงก์ใหม่เองที่นี่</a>
+        <span id="statusMsg"></span>
     </div>
 
     <table id="linksTable">
@@ -37,7 +55,7 @@
             </tr>
         </thead>
         <tbody>
-            </tbody>
+        </tbody>
     </table>
 
     <div id="blur-overlay" onclick="closeQR()"></div>
@@ -50,12 +68,17 @@
 
     <script>
         const currentDomain = window.location.origin + '/Link.m-society';
-
-        // 🛠️ แก้ไข: ใส่ SPREADSHEET ID เดียวกับไฟล์ 404.html
         const sheetId = '1Y1-OxdGd21LW2hjIJU79FGHr-ga7ynQ9hU3P1qxK4x0';
-        // เปลี่ยนให้ตรงกันเช่นกันครับ
-        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent('การตอบกลับฟอร์ม 1')}`;
+        
+        // 🛠️ แก้ไข: วาง URL ของ Google Web App API ที่ได้จากหลังบ้านตรงนี้ 🛠️
+        const webAppUrl = 'https://script.google.com/macros/s/ใส่_URL_WEB_APP_ของคุณตรงนี้/exec';
 
+        // URL ดึงข้อมูลมาโชว์ในตาราง (แก้เป็น "การตอบกลับฟอร์ม 1" เรียบร้อยแล้ว)
+        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent('การตอบกลับฟอร์ม 1')}`;
+        
+        let existingSlugs = []; // ตัวแปรเก็บชื่อลิงก์สั้นที่มีอยู่แล้วเพื่อเอาไว้เช็กซ้ำ
+
+        // 1. ดึงข้อมูลจาก Sheet มาแสดงผลบนตารางตามโครงสร้างเดิม
         fetch(jsonUrl)
             .then(res => res.text())
             .then(text => {
@@ -64,29 +87,92 @@
                 const rows = jsonData.table.rows;
                 const tbody = document.querySelector('#linksTable tbody');
                 
-                // เริ่มวนลูปแถวข้อมูล (ข้ามแถวแรกที่เป็นหัวตาราง i = 1)
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
                     if (row.c && row.c[1] && row.c[2]) {
-                        const slug = row.c[1].v.toString().trim();
-                        const longUrl = row.c[2].v.toString().trim();
+                        const shortVal = row.c[1] ? (row.c[1].v !== null ? row.c[1].v : '') : '';
+                        const longVal = row.c[2] ? (row.c[2].v !== null ? row.c[2].v : '') : '';
+                        
+                        const slug = shortVal.toString().trim();
+                        const longUrl = longVal.toString().trim();
                         const shortUrl = `${currentDomain}/${slug}`;
 
-                        const rowHtml = `<tr>
-                            <td><a href="${shortUrl}" target="_blank" style="color: #2563eb; font-weight:bold; text-decoration:none;">/${slug}</a></td>
-                            <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b;">${longUrl}</td>
-                            <td>
-                                <button class="btn-qr" onclick="generateQR('${shortUrl}')">สร้าง QR Code</button>
-                            </td>
-                        </tr>`;
-                        tbody.innerHTML += rowHtml;
+                        if(slug && longUrl) {
+                            existingSlugs.push(slug.toLowerCase()); // บันทึกเข้าลิสต์เช็กซ้ำ
+                            
+                            const rowHtml = `<tr>
+                                <td><a href="${shortUrl}" target="_blank" style="color: #2563eb; font-weight:bold; text-decoration:none;">/${slug}</a></td>
+                                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b;">${longUrl}</td>
+                                <td>
+                                    <button class="btn-qr" onclick="generateQR('${shortUrl}')">สร้าง QR Code</button>
+                                </td>
+                            </tr>`;
+                            tbody.innerHTML += rowHtml;
+                        }
                     }
                 }
             })
             .catch(err => console.error("Error loading table data:", err));
 
+        // 2. ⚡ ระบบเช็กซ้ำแบบเรียลไทม์ขณะที่ User พิมพ์ชื่อลิงก์สั้น
+        document.getElementById('inputShort').addEventListener('input', function() {
+            const val = this.value.trim().toLowerCase();
+            const msg = document.getElementById('statusMsg');
+            const btn = document.getElementById('btnSubmit');
+
+            if (!val) {
+                msg.innerText = "";
+                btn.disabled = false;
+                return;
+            }
+
+            if (existingSlugs.includes(val)) {
+                msg.innerText = "❌ ชื่อลิงก์สั้นนี้ถูกใช้งานไปแล้ว กรุณาตั้งชื่ออื่น";
+                msg.style.color = "#ef4444";
+                btn.disabled = true; // ล็อกปุ่มบันทึกทันที
+            } else {
+                msg.innerText = "✅ ชื่อนี้ว่างอยู่ สามารถใช้งานได้";
+                msg.style.color = "#10b981";
+                btn.disabled = false; // ปลดล็อกปุ่ม
+            }
+        });
+
+        // 3. ฟังก์ชันส่งข้อมูลไปบันทึกที่ Google Sheet หลังบ้าน
+        function submitToData() {
+            const shortUrl = document.getElementById('inputShort').value.trim();
+            const longUrl = document.getElementById('inputLong').value.trim();
+            const msg = document.getElementById('statusMsg');
+            const btn = document.getElementById('btnSubmit');
+
+            if (!shortUrl || !longUrl) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
+                return;
+            }
+
+            btn.innerText = "⏳ กำลังบันทึก...";
+            btn.disabled = true;
+
+            fetch(webAppUrl, {
+                method: 'POST',
+                mode: 'no-cors', // ทำงานข้ามโดเมนได้ทันทีโดยไม่ติด CORS
+                cache: 'no-cache',
+                body: JSON.stringify({ shortUrl: shortUrl, longUrl: longUrl })
+            })
+            .then(() => {
+                msg.innerText = "🎉 บันทึกลิงก์สั้นสำเร็จ!";
+                msg.style.color = "#10b981";
+                setTimeout(() => { location.reload(); }, 1000); // รีเฟรชหน้าเพื่ออัปเดตตารางใน 1 วินาที
+            })
+            .catch(err => {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบหลังบ้าน');
+                btn.innerText = "บันทึกข้อมูล";
+                btn.disabled = false;
+                console.error(err);
+            });
+        }
+
+        // --- ฟังก์ชันเครื่องมือ QR Code อันเดิม ---
         let qrElement = new QRCode(document.getElementById("qrcode"), { width: 200, height: 200 });
-        
         function generateQR(url) {
             qrElement.clear();
             qrElement.makeCode(url);
@@ -94,7 +180,6 @@
             document.getElementById('qrcode-box').style.display = 'block';
             document.getElementById('blur-overlay').style.display = 'block';
         }
-
         function closeQR() {
             document.getElementById('qrcode-box').style.display = 'none';
             document.getElementById('blur-overlay').style.display = 'none';
@@ -102,81 +187,3 @@
     </script>
 </body>
 </html>
-
-<div style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px;">
-    <h3>➕ สร้างลิงก์สั้นใหม่</h3>
-    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-        <input type="text" id="inputShort" placeholder="ชื่อลิงก์สั้น เช่น msdhs" style="padding: 10px; width: 30%; border: 1px solid #ccc; border-radius: 6px;">
-        <input type="url" id="inputLong" placeholder="วางลิงก์ยาวตัวเต็มที่นี่..." style="padding: 10px; width: 55%; border: 1px solid #ccc; border-radius: 6px;">
-        <button id="btnSubmit" onclick="submitData()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">บันทึก</button>
-    </div>
-    <span id="checkResult" style="font-size: 14px; font-weight: bold;"></span>
-</div>
-
-<script>
-    // 🛠️ วาง URL ของ Google Web App API ที่ได้จากหน้า Apps Script ตรงนี้
-    const webAppUrl = 'https://script.google.com/macros/s/XXXXX/exec'; 
-
-    // ดักฟังเหตุการณ์เมื่อ User พิมพ์ชื่อลิงก์สั้นเสร็จ (เมื่อหลุดโฟกัสจากช่องพิมพ์)
-    document.getElementById('inputShort').addEventListener('blur', function() {
-        const shortValue = this.value.trim().toLowerCase();
-        const resultSpan = document.getElementById('checkResult');
-        const submitBtn = document.getElementById('btnSubmit');
-        
-        if(!shortValue) return;
-
-        resultSpan.innerText = "⏳ กำลังตรวจสอบความซ้ำ...";
-        resultSpan.style.color = "#64748b";
-
-        // เทคนิค: วิ่งไปสแกนข้อมูลจาก JSON ดั้งเดิมที่เราโหลดมาโชว์ในตารางอยู่แล้ว (เร็วมาก ไม่หน่วงเซิร์ฟเวอร์)
-        // (สมมติว่าตัวแปร links ดึงข้อมูลมาจาก Sheet เรียบร้อยแล้วในฟังก์ชันโหลดตาราง)
-        // เพื่อความง่าย เราสามารถส่งไปเช็กกับข้อมูลที่เราดึงมาตอนทำตารางได้เลยครับ
-        
-        let isExist = false;
-        document.querySelectorAll('#linksTable tbody tr').forEach(row => {
-            const currentSlug = row.querySelector('td strong, td a').innerText.replace('/', '').trim().toLowerCase();
-            if(currentSlug === shortValue) {
-                isExist = true;
-            }
-        });
-
-        if (isExist) {
-            resultSpan.innerText = "❌ ชื่อนี้ถูกใช้งานไปแล้ว กรุณาใช้ชื่ออื่น";
-            resultSpan.style.color = "#ef4444";
-            submitBtn.disabled = true; // บล็อกปุ่มกดส่ง
-            submitBtn.style.background = "#94a3b8";
-        } else {
-            resultSpan.innerText = "✅ ชื่อนี้สามารถใช้งานได้!";
-            resultSpan.style.color = "#10b981";
-            submitBtn.disabled = false; // เปิดให้กดส่งได้
-            submitBtn.style.background = "#2563eb";
-        }
-    });
-
-    // ฟังก์ชันส่งข้อมูลไปบันทึกที่ Google Sheet หลังบ้าน
-    function submitData() {
-        const shortUrl = document.getElementById('inputShort').value;
-        const longUrl = document.getElementById('inputLong').value;
-        
-        if(!shortUrl || !longUrl) {
-            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-            return;
-        }
-
-        document.getElementById('btnSubmit').innerText = "กำลังบันทึก...";
-        
-        fetch(webAppUrl, {
-            method: 'POST',
-            mode: 'no-cors', // สั่งปิด CORS เพื่อให้ข้ามแพลตฟอร์มไป Google ได้ฟรี
-            cache: 'no-cache',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shortUrl: shortUrl, longUrl: longUrl })
-        }).then(() => {
-            alert('🎉 บันทึกลิงก์สั้นสำเร็จ!');
-            location.reload(); // รีเฟรชหน้าเว็บเพื่อให้ตารางอัปเดตข้อมูลใหม่
-        }).catch(err => {
-            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-            console.error(err);
-        });
-    }
-</script>
