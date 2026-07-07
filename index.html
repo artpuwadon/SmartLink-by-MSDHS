@@ -6,31 +6,26 @@
     <title>ระบบจัดการลิงก์สั้นหน่วยงาน</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background-color: #f8fafc; color: #1e293b; }
+        body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background-color: #f8fafc; color: #1e293b; }
         .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px; }
         h1 { margin: 0; color: #1e3a8a; font-size: 28px; }
-        .btn-add { background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(37,99,235, 0.2); transition: 0.2s; }
-        .btn-add:hover { background-color: #1d4ed8; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .btn-add { background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         th, td { padding: 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background-color: #f1f5f9; color: #475569; font-weight: 600; }
-        tr:hover { background-color: #f8fafc; }
-        .btn-qr { background: #10b981; color: white; border: none; padding: 8px 14px; cursor: pointer; border-radius: 6px; font-size: 14px; }
-        .btn-qr:hover { background: #059669; }
-        #qrcode-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; display: none; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); z-index: 100; border: 1px solid #e2e8f0; }
+        th { background-color: #f1f5f9; color: #475569; }
+        .btn-qr { background: #10b981; color: white; border: none; padding: 8px 14px; cursor: pointer; border-radius: 6px; }
+        #qrcode-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; display: none; text-align: center; box-shadow: 0 20px 25px rgba(0,0,0,0.1); z-index: 100; border: 1px solid #e2e8f0; }
         #blur-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: none; z-index: 99; }
-        .short-link-text { color: #2563eb; font-weight: 600; text-decoration: none; }
-        .short-link-text:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
     <div class="header-container">
         <div>
-            <h1>🔗 ระบบลิงก์สั้น & QR Code</h1>
+            <h1>🔗 ระบบลิงก์สั้น & QR Code (Link.m-society)</h1>
             <p style="margin: 5px 0 0 0; color: #64748b;">บริการลิงก์สั้นภายในหน่วยงานของเรา</p>
         </div>
-        <a href="ใส่_URL_GOOGLE_FORMS_ของคุณตรงนี้" target="_blank" class="btn-add">+ เพิ่มลิงก์ใหม่เองที่นี่</a>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLScsIZKFTDjTJg6wp9cbPF9YW-nHwv5wEKXmmhoA2JK0Dvwldw/viewform" target="_blank" class="btn-add">+ เพิ่มลิงก์ใหม่เองที่นี่</a>
     </div>
 
     <table id="linksTable">
@@ -49,45 +44,45 @@
     <div id="qrcode-box">
         <h3 style="margin-top:0;">📱 QR Code สำเร็จรูป</h3>
         <div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
-        <p id="qr-text" style="font-weight: bold; color: #2563eb; word-break: break-all; margin-bottom: 20px;"></p>
+        <p id="qr-text" style="font-weight: bold; color: #2563eb; word-break: break-all;"></p>
         <button onclick="closeQR()" style="background: #64748b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">ปิดหน้าต่าง</button>
     </div>
 
     <script>
-        // เปลี่ยนบรรทัดนี้ใน index.html
-        const currentDomain = window.location.origin + '/SmartLink-by-MSDHS';
+        const currentDomain = window.location.origin + '/Link.m-society';
 
-        // 🛠️ แก้ไข: ใส่ข้อมูลเดียวกับไฟล์ 404.html
+        // 🛠️ แก้ไข: ใส่ SPREADSHEET ID เดียวกับไฟล์ 404.html
         const sheetId = 'https://docs.google.com/spreadsheets/d/1Y1-OxdGd21LW2hjIJU79FGHr-ga7ynQ9hU3P1qxK4x0';
-        const sheetName = 'การตอบแบบฟอร์ม 1';
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
-        fetch(csvUrl)
+        fetch(jsonUrl)
             .then(res => res.text())
-            .then(csvText => {
-                const lines = csvText.split('\n');
+            .then(text => {
+                const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+                const jsonData = JSON.parse(jsonString);
+                const rows = jsonData.table.rows;
                 const tbody = document.querySelector('#linksTable tbody');
                 
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i]) continue;
-                    const columns = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                    
-                    if (columns && columns.length >= 3) {
-                        const slug = columns[1].replace(/"/g, '').trim();
-                        const longUrl = columns[2].replace(/"/g, '').trim();
+                // เริ่มวนลูปแถวข้อมูล (ข้ามแถวแรกที่เป็นหัวตาราง i = 1)
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.c && row.c[1] && row.c[2]) {
+                        const slug = row.c[1].v.toString().trim();
+                        const longUrl = row.c[2].v.toString().trim();
                         const shortUrl = `${currentDomain}/${slug}`;
 
-                        const row = `<tr>
-                            <td><a href="${shortUrl}" target="_blank" class="short-link-text">/${slug}</a></td>
+                        const rowHtml = `<tr>
+                            <td><a href="${shortUrl}" target="_blank" style="color: #2563eb; font-weight:bold; text-decoration:none;">/${slug}</a></td>
                             <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #64748b;">${longUrl}</td>
                             <td>
                                 <button class="btn-qr" onclick="generateQR('${shortUrl}')">สร้าง QR Code</button>
                             </td>
                         </tr>`;
-                        tbody.innerHTML += row;
+                        tbody.innerHTML += rowHtml;
                     }
                 }
-            });
+            })
+            .catch(err => console.error("Error loading table data:", err));
 
         let qrElement = new QRCode(document.getElementById("qrcode"), { width: 200, height: 200 });
         
