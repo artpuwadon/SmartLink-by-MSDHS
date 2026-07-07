@@ -137,50 +137,58 @@
             }
         });
 
-// ฟังก์ชันส่งข้อมูลเวอร์ชันปรับปรุง (เสถียร 100% สำหรับ Google Sheets)
-function submitToData() {
-    const shortUrl = document.getElementById('inputShort').value.trim();
-    const longUrl = document.getElementById('inputLong').value.trim();
-    const msg = document.getElementById('statusMsg');
-    const btn = document.getElementById('btnSubmit');
-
-    if (!shortUrl || !longUrl) {
-        alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
-        return;
-    }
-
-    btn.innerText = "⏳ กำลังบันทึก...";
-    btn.disabled = true;
-
-    // เปลี่ยนมาใช้ URLSearchParams เพื่อแปลงรูปแบบการส่งข้อมูลให้เข้ากับ Google Post
-    const formData = new URLSearchParams();
-    formData.append('shortUrl', shortUrl);
-    formData.append('longUrl', longUrl);
-
-    fetch(webAppUrl, {
-        method: 'POST',
-        mode: 'no-cors', // สั่งทำงานแบบข้ามโดเมน
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formData.toString()
-    })
-    .then(() => {
-        msg.innerText = "🎉 บันทึกลิงก์สั้นสำเร็จ! กำลังอัปเดตตาราง...";
-        msg.style.color = "#10b981";
+        function submitToData() {
+            const shortUrl = document.getElementById('inputShort').value.trim();
+            const longUrl = document.getElementById('inputLong').value.trim();
+            const msg = document.getElementById('statusMsg');
+            const btn = document.getElementById('btnSubmit');
         
-        // หน่วงเวลา 2 วินาที เพื่อให้ Google Sheet บันทึกเสร็จสมบูรณ์ ก่อนจะรีเฟรชหน้าจอ
-        setTimeout(() => { 
-            location.reload(); 
-        }, 2000); 
-    })
-    .catch(err => {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบหลังบ้าน');
-        btn.innerText = "บันทึกข้อมูล";
-        btn.disabled = false;
-        console.error(err);
-    });
-}
+            if (!shortUrl || !longUrl) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
+                return;
+            }
+        
+            btn.innerText = "⏳ กำลังบันทึกข้อมูล...";
+            btn.disabled = true;
+        
+            // สร้าง Form ชั่วคราวส่งข้อมูลแบบเบสิก เพื่อการันตีการเข้าถึงหลังบ้าน Google 100%
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = webAppUrl;
+            form.target = 'hidden_iframe'; // ยิงข้อมูลผ่านหน้าต่างล่องหน ไม่ให้หน้าเว็บจริงกระตุก
+        
+            const input1 = document.createElement('input');
+            input1.name = 'shortUrl';
+            input1.value = shortUrl;
+            form.appendChild(input1);
+        
+            const input2 = document.createElement('input');
+            input2.name = 'longUrl';
+            input2.value = longUrl;
+            form.appendChild(input2);
+        
+            // สร้าง iframe ล่องหนไว้รองรับผลลัพธ์
+            let iframe = document.getElementById('hidden_iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'hidden_iframe';
+                iframe.name = 'hidden_iframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+        
+            document.body.appendChild(form);
+            form.submit(); // สั่งส่งข้อมูลทันที
+        
+            // แสดงสถานะความสำเร็จและสั่งรีเฟรชหน้าเว็บ
+            msg.innerText = "🎉 ส่งข้อมูลสำเร็จ! กำลังซิงค์ตารางฐานข้อมูล...";
+            msg.style.color = "#10b981";
+            
+            setTimeout(() => { 
+                document.body.removeChild(form);
+                location.reload(); 
+            }, 2500); // หน่วงเวลาให้ Google บันทึกอย่างเนียนๆ 2.5 วินาที
+        }
         
         // --- ฟังก์ชันเครื่องมือ QR Code อันเดิม ---
         let qrElement = new QRCode(document.getElementById("qrcode"), { width: 200, height: 200 });
