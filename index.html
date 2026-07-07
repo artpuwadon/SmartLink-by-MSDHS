@@ -58,7 +58,7 @@
 
     <div id="blur-overlay" onclick="closeQR()"></div>
     <div id="qrcode-box">
-        <h3 style="margin-top:0;">📱 QR Code สำเร็จรูป</h3>
+        <h3 style="margin-top:0;">QR Code</h3>
         <div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
         <p id="qr-text" style="font-weight: bold; color: #2563eb; word-break: break-all;"></p>
         <button onclick="closeQR()" style="background: #64748b; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">ปิดหน้าต่าง</button>
@@ -135,7 +135,7 @@
             const btn = document.getElementById('btnSubmit');
 
             if (!shortUrl || !longUrl) {
-                alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
+                alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก');
                 return;
             }
 
@@ -161,7 +161,7 @@
             document.body.appendChild(form);
             form.submit(); // ส่งข้อมูลเข้า Google Form
 
-            msg.innerText = "🎉 บันทึกสำเร็จ! ระบบกำลังดึงตารางใหม่...";
+            msg.innerText = "🎉 บันทึกสำเร็จ!";
             msg.style.color = "#10b981";
 
             // รอ 2.5 วินาทีให้ Google ซิงค์ลงชีท แล้วรีเฟรชหน้าเว็บดึงข้อมูลใหม่มาโชว์
