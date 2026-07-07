@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กำลังเปลี่ยนเส้นทาง...</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding-top: 100px; background-color: #f4f6f9; color: #333; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        h2 { font-weight: 400; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <h2 id="msg">กำลังตรวจสอบลิงก์สั้น...</h2>
+
+    <script>
+        // 1. ดึงชื่อลิงก์สั้นจาก URL
+        const path = window.location.pathname.replace(/^\/|\/$/g, '');
+
+        // 🛠️ แก้ไขข้อมูล Google Sheet ของคุณตรงนี้ 🛠️
+        const sheetId = 'https://docs.google.com/spreadsheets/d/1Y1-OxdGd21LW2hjIJU79FGHr-ga7ynQ9hU3P1qxK4x0'; 
+        const sheetName = 'การตอบแบบฟอร์ม 1'; // ชื่อแท็บที่ Google Forms บันทึกข้อมูลลงไป
+        
+        // ดึงข้อมูลเป็นแบบ CSV
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+
+        if (path) {
+            fetch(csvUrl)
+                .then(response => response.text())
+                .then(csvText => {
+                    // แปลงโครงสร้าง CSV เป็นตารางข้อมูล
+                    const lines = csvText.split('\n');
+                    const links = {};
+
+                    // ข้ามแถวแรกที่เป็นหัวตาราง (i = 1)
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i]) continue;
+                        
+                        // แยกคอลัมน์ด้วยเครื่องหมายคอมมา แต่ต้องระวังคอมมาใน URL
+                        // ใช้ Regex เพื่อแยกคอลัมน์ที่ถูกครอบด้วยเครื่องหมายคำพูด "..."
+                        const columns = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                        
+                        if (columns && columns.length >= 3) {
+                            // Google Forms ปกติ Col A = Timestamp, Col B = ลิงก์สั้น, Col C = ลิงก์ยาว
+                            const shortUrl = columns[1].replace(/"/g, '').trim().toLowerCase();
+                            const longUrl = columns[2].replace(/"/g, '').trim();
+                            
+                            if (shortUrl && longUrl) {
+                                links[shortUrl] = longUrl;
+                            }
+                        }
+                    }
+
+                    // 2. ตรวจสอบว่ามีลิงก์สั้นที่ต้องการไหม
+                    const searchPath = path.toLowerCase();
+                    if (links[searchPath]) {
+                        document.getElementById('msg').innerText = "กำลังนำท่านไปยังปลายทาง...";
+                        window.location.href = links[searchPath];
+                    } else {
+                        document.getElementById('msg').innerText = "❌ ไม่พบลิงก์สั้นนี้ในระบบ หรือพิมพ์ผิด";
+                        document.querySelector('.loader').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('msg').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล";
+                    console.error(error);
+                });
+        } else {
+            // ถ้าพิมพ์แค่โดเมนหลักเฉยๆ ให้เด้งไปหน้าแรก
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>
