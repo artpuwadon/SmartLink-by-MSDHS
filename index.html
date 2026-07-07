@@ -137,40 +137,51 @@
             }
         });
 
-        // 3. ฟังก์ชันส่งข้อมูลไปบันทึกที่ Google Sheet หลังบ้าน
-        function submitToData() {
-            const shortUrl = document.getElementById('inputShort').value.trim();
-            const longUrl = document.getElementById('inputLong').value.trim();
-            const msg = document.getElementById('statusMsg');
-            const btn = document.getElementById('btnSubmit');
+// ฟังก์ชันส่งข้อมูลเวอร์ชันปรับปรุง (เสถียร 100% สำหรับ Google Sheets)
+function submitToData() {
+    const shortUrl = document.getElementById('inputShort').value.trim();
+    const longUrl = document.getElementById('inputLong').value.trim();
+    const msg = document.getElementById('statusMsg');
+    const btn = document.getElementById('btnSubmit');
 
-            if (!shortUrl || !longUrl) {
-                alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
-                return;
-            }
+    if (!shortUrl || !longUrl) {
+        alert('กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกครับ');
+        return;
+    }
 
-            btn.innerText = "⏳ กำลังบันทึก...";
-            btn.disabled = true;
+    btn.innerText = "⏳ กำลังบันทึก...";
+    btn.disabled = true;
 
-            fetch(webAppUrl, {
-                method: 'POST',
-                mode: 'no-cors', // ทำงานข้ามโดเมนได้ทันทีโดยไม่ติด CORS
-                cache: 'no-cache',
-                body: JSON.stringify({ shortUrl: shortUrl, longUrl: longUrl })
-            })
-            .then(() => {
-                msg.innerText = "🎉 บันทึกลิงก์สั้นสำเร็จ!";
-                msg.style.color = "#10b981";
-                setTimeout(() => { location.reload(); }, 1000); // รีเฟรชหน้าเพื่ออัปเดตตารางใน 1 วินาที
-            })
-            .catch(err => {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบหลังบ้าน');
-                btn.innerText = "บันทึกข้อมูล";
-                btn.disabled = false;
-                console.error(err);
-            });
-        }
+    // เปลี่ยนมาใช้ URLSearchParams เพื่อแปลงรูปแบบการส่งข้อมูลให้เข้ากับ Google Post
+    const formData = new URLSearchParams();
+    formData.append('shortUrl', shortUrl);
+    formData.append('longUrl', longUrl);
 
+    fetch(webAppUrl, {
+        method: 'POST',
+        mode: 'no-cors', // สั่งทำงานแบบข้ามโดเมน
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formData.toString()
+    })
+    .then(() => {
+        msg.innerText = "🎉 บันทึกลิงก์สั้นสำเร็จ! กำลังอัปเดตตาราง...";
+        msg.style.color = "#10b981";
+        
+        // หน่วงเวลา 2 วินาที เพื่อให้ Google Sheet บันทึกเสร็จสมบูรณ์ ก่อนจะรีเฟรชหน้าจอ
+        setTimeout(() => { 
+            location.reload(); 
+        }, 2000); 
+    })
+    .catch(err => {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบหลังบ้าน');
+        btn.innerText = "บันทึกข้อมูล";
+        btn.disabled = false;
+        console.error(err);
+    });
+}
+        
         // --- ฟังก์ชันเครื่องมือ QR Code อันเดิม ---
         let qrElement = new QRCode(document.getElementById("qrcode"), { width: 200, height: 200 });
         function generateQR(url) {
