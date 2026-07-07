@@ -53,7 +53,8 @@
 
         // 🛠️ แก้ไข: ใส่ SPREADSHEET ID เดียวกับไฟล์ 404.html
         const sheetId = '1Y1-OxdGd21LW2hjIJU79FGHr-ga7ynQ9hU3P1qxK4x0';
-        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+        // เปลี่ยนจากของเดิม ให้เป็นโค้ดบรรทัดนี้:
+        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=CleanLinks`;
 
         fetch(jsonUrl)
             .then(res => res.text())
