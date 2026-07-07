@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>กำลังเปลี่ยนเส้นทาง...</title>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding-top: 100px; background-color: #f4f6f9; color: #333; }
+        body { font-family: sans-serif; text-align: center; padding-top: 100px; background-color: #f4f6f9; color: #333; }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { font-weight: 400; color: #555; }
     </style>
 </head>
 <body>
@@ -16,57 +15,46 @@
     <h2 id="msg">กำลังตรวจสอบลิงก์สั้น...</h2>
 
     <script>
-        // 1. ดึงชื่อลิงก์สั้นจาก URL
-        //const path = window.location.pathname.replace(/^\/|\/$/g, '');
-
-        // โค้ดใหม่: ตัดชื่อโฟลเดอร์ของ GitHub ออกไปด้วย เพื่อให้เหลือแค่ชื่อลิงก์สั้นจริงๆ
+        // 1. แกะค่าชื่อลิงก์สั้น (Slug) โดยรองรับโฟลเดอร์ Link.m-society
         let path = window.location.pathname;
-        const repoName = '/SmartLink-by-MSDHS/';
-        
+        const repoName = '/Link.m-society/';
         if (path.startsWith(repoName)) {
             path = path.substring(repoName.length);
         }
-        path = path.replace(/^\/|\/$/g, ''); // ตัดเครื่องหมาย / หัวท้ายออก
+        path = path.replace(/^\/|\/$/g, '').trim().toLowerCase();
 
-        // 🛠️ แก้ไขข้อมูล Google Sheet ของคุณตรงนี้ 🛠️
+        // 🛠️ แก้ไข SPREADSHEET ID ของคุณตรงนี้ 🛠️
         const sheetId = 'https://docs.google.com/spreadsheets/d/1Y1-OxdGd21LW2hjIJU79FGHr-ga7ynQ9hU3P1qxK4x0'; 
-        const sheetName = 'การตอบแบบฟอร์ม 1'; // ชื่อแท็บที่ Google Forms บันทึกข้อมูลลงไป
         
-        // ดึงข้อมูลเป็นแบบ CSV
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        // ใช้ URL รูปแบบ gviz/tq เพื่อดึงข้อมูลเป็น JSON แทน CSV (แม่นยำกว่า 100%)
+        const jsonUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
 
         if (path) {
-            fetch(csvUrl)
+            fetch(jsonUrl)
                 .then(response => response.text())
-                .then(csvText => {
-                    // แปลงโครงสร้าง CSV เป็นตารางข้อมูล
-                    const lines = csvText.split('\n');
+                .then(text => {
+                    // ตัดข้อความส่วนเกินที่ Google พ่วงมาเพื่อให้เหลือแค่ JSON ที่ถูกต้อง
+                    const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+                    const jsonData = JSON.parse(jsonString);
+                    const rows = jsonData.table.rows;
+                    
                     const links = {};
-
-                    // ข้ามแถวแรกที่เป็นหัวตาราง (i = 1)
-                    for (let i = 1; i < lines.length; i++) {
-                        if (!lines[i]) continue;
-                        
-                        // แยกคอลัมน์ด้วยเครื่องหมายคอมมา แต่ต้องระวังคอมมาใน URL
-                        // ใช้ Regex เพื่อแยกคอลัมน์ที่ถูกครอบด้วยเครื่องหมายคำพูด "..."
-                        const columns = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                        
-                        if (columns && columns.length >= 3) {
-                            // Google Forms ปกติ Col A = Timestamp, Col B = ลิงก์สั้น, Col C = ลิงก์ยาว
-                            const shortUrl = columns[1].replace(/"/g, '').trim().toLowerCase();
-                            const longUrl = columns[2].replace(/"/g, '').trim();
-                            
+                    
+                    rows.forEach(row => {
+                        // เช็กว่าแถวมีข้อมูลครบตามฟอร์มหรือไม่ (ปกติ Col B คือช่องสั้น, Col C คือช่องยาว)
+                        if (row.c && row.c[1] && row.c[2]) {
+                            const shortUrl = row.c[1].v.toString().trim().toLowerCase();
+                            const longUrl = row.c[2].v.toString().trim();
                             if (shortUrl && longUrl) {
                                 links[shortUrl] = longUrl;
                             }
                         }
-                    }
+                    });
 
-                    // 2. ตรวจสอบว่ามีลิงก์สั้นที่ต้องการไหม
-                    const searchPath = path.toLowerCase();
-                    if (links[searchPath]) {
+                    // 2. ตรวจสอบและนำทาง
+                    if (links[path]) {
                         document.getElementById('msg').innerText = "กำลังนำท่านไปยังปลายทาง...";
-                        window.location.href = links[searchPath];
+                        window.location.href = links[path];
                     } else {
                         document.getElementById('msg').innerText = "❌ ไม่พบลิงก์สั้นนี้ในระบบ หรือพิมพ์ผิด";
                         document.querySelector('.loader').style.display = 'none';
@@ -77,8 +65,8 @@
                     console.error(error);
                 });
         } else {
-            // ถ้าพิมพ์แค่โดเมนหลักเฉยๆ ให้เด้งไปหน้าแรก
-            window.location.href = '/index.html';
+            // ถ้าเข้าหน้าแรกเฉยๆ ให้วิ่งไป index.html
+            window.location.href = repoName;
         }
     </script>
 </body>
